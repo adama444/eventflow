@@ -24,7 +24,9 @@ eventflow/
 │ └── tests/            # Unit tests
 ├── main.py             # FastAPI entry point
 ├── requirements.txt    # Python dependencies
-└── .env.example        # Example environment variables
+├── .env.example        # Example environment variables
+├── README.md              
+└── CONTRIBUTING.md       
 ```
 
 ## ⚙️ Setup
