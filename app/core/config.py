@@ -22,8 +22,7 @@ class Settings(BaseSettings):
     langsmith_project: str | None = None
 
     # Groq API
-    groq_api_key: str
-    groq_model: str
+    ollama_model: str
 
     # Database
     postgres_user: str
