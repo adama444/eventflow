@@ -11,9 +11,9 @@ class Settings(BaseSettings):
     debug: bool = Field(default=True)
 
     # Google Drive
-    google_drive_credentials: str
-    drive_folder_id: str
-    drive_media_folder_id: str
+    google_drive_credentials: str = 'service_account.json'
+    drive_folder_id: str = Field(default='')
+    drive_media_folder_id: str = Field(default='')
 
     # LangSmith / LangChain
     langsmith_tracing: bool = Field(default=False)
@@ -22,14 +22,14 @@ class Settings(BaseSettings):
     langsmith_project: str | None = None
 
     # Groq API
-    ollama_model: str
+    ollama_model: str = 'gemma3:4b'
 
     # Database
-    postgres_user: str
-    postgres_password: str
+    postgres_user: str = 'postgres'
+    postgres_password: str = 'postgres'
     postgres_host: str = "localhost"
     postgres_port: int = 5432
-    postgres_db_name: str
+    postgres_db_name: str = 'eventflow'
 
     class Config:
         env_file = ".env"
@@ -37,11 +37,9 @@ class Settings(BaseSettings):
     @property
     def database_url(self) -> str:
         return (
-            f"dbname={self.postgres_db_name} "
-            f"user={self.postgres_user} "
-            f"password={self.postgres_password} "
-            f"host={self.postgres_host} "
-            f"port={self.postgres_port}"
+            f"postgresql+psycopg2://{self.postgres_user}:"
+            f"{self.postgres_password}@{self.postgres_host}:"
+            f"{self.postgres_port}/{self.postgres_db_name}"
         )
 
 
