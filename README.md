@@ -19,6 +19,8 @@ eventflow/
 │ ├── agents/           # LangGraph chatbot logic
 │ ├── core/             # Config, database, logger
 │ ├── helper/           # Google Drive & file utilities
+│ ├── prompts/          # Agent prompts
+│ ├── scripts/          # Test scripts before API
 │ ├── routers/          # FastAPI routes
 │ ├── schemas/          # Pydantic models
 │ └── tests/            # Unit tests
@@ -49,7 +51,10 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-4. Run the API
+4. Install and run an Ollama instance
+The project requires a running [Ollama](https://ollama.com/) instance to process LLM requests. Make sure Ollama is installed and the model you want to use is running before starting the API.
+
+5. Run the API
 ```bash
 uvicorn main:app --reload
 ```
