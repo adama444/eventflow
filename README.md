@@ -12,6 +12,17 @@ The chatbot interacts with users, stores checkpoints and long-term memory in Pos
 - PostgreSQL – memory & checkpoints
 - Google Drive API – media & file storage
 
+## 💾 Conversation Memory (Checkpointing)
+The chatbot supports long-term memory using PostgreSQL.
+Each user’s conversation state is persisted in the database and can be resumed at any time.
+
+### How it works
+- If you provide a user_id when calling the /chat endpoint, the conversation history will be retrieved from the database.
+- After every new exchange, the updated conversation state is saved back into PostgreSQL.
+
+### ⚠️ Note
+Make sure your PostgreSQL database is running and correctly configured in .env before using checkpointing.
+
 ## 📂 Project Structure
 ```
 eventflow/
@@ -22,7 +33,7 @@ eventflow/
 │ ├── prompts/          # Agent prompts
 │ ├── scripts/          # Test scripts before API
 │ ├── routers/          # FastAPI routes
-│ ├── schemas/          # Pydantic models
+│ ├── schemas/          # Pydantic models and database models
 │ └── tests/            # Unit tests
 ├── main.py             # FastAPI entry point
 ├── requirements.txt    # Python dependencies

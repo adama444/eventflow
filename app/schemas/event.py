@@ -3,7 +3,7 @@ from datetime import date
 from pydantic import BaseModel, EmailStr, HttpUrl
 
 
-class EventData(BaseModel):
+class Event(BaseModel):
     name: str | None = None
     start_date: date | None = None
     end_date: date | None = None
@@ -17,12 +17,3 @@ class EventData(BaseModel):
     organizer_email: EmailStr | None = None
     organizer_phone: str | None = None
     ticket_link: HttpUrl | None = None
-
-
-class ChatRequest(BaseModel):
-    message: str
-
-
-class ChatResponse(BaseModel):
-    response: str
-    messages: list[str]

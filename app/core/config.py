@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     langsmith_project: str | None = None
 
     # Groq API
-    ollama_model: str = 'gemma3:4b'
+    ollama_model: str = 'gemma3:1b'
 
     # Database
     postgres_user: str = 'postgres'
@@ -42,5 +42,12 @@ class Settings(BaseSettings):
             f"{self.postgres_port}/{self.postgres_db_name}"
         )
 
+    @property
+    def psycopg_database_url(self) -> str:
+        return (
+            f"postgresql://{self.postgres_user}:"
+            f"{self.postgres_password}@{self.postgres_host}:"
+            f"{self.postgres_port}/{self.postgres_db_name}"
+        )
 
 settings = Settings()

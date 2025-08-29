@@ -1,24 +1,30 @@
-# app/routers/chat.py
 from typing import Any, cast
-from fastapi import APIRouter
-from app.schemas.event_data import ChatRequest, ChatResponse
-from app.agents.event_agent import chatbot_app
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from langchain.schema import HumanMessage
+
+from app.agents.agent import chatbot_app
+from app.core.database import get_db_session
+from app.helper.user import get_user
+from app.schemas.chat import ChatRequest, ChatResponse
+
 
 router = APIRouter(prefix="/chat", tags=["Chatbot"])
 
-# Keep a global state for now (later we’ll replace with checkpointed memory)
-conversation_state:dict = {"messages": []}
-
 
 @router.post("/", response_model=ChatResponse)
-def chat_endpoint(request: ChatRequest):
-    # Append user message
-    conversation_state["messages"].append(request.message)
+def chat_endpoint(request: ChatRequest, db: Session = Depends(get_db_session)):
+    """Chat endpoint with conversation state persisted in PostgreSQL."""
+    # Ensure user exists
+    user = get_user(db, request.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
 
-    # Run through LangGraph agent
-    result = chatbot_app.invoke(cast(Any, conversation_state))
-
-    # Extract last AI message
+    result = chatbot_app.invoke(
+        cast(Any, {"messages": [HumanMessage(request.message)]}),
+        config={"configurable": {"thread_id": str(user.id)}},
+    )
     ai_message = result["messages"][-1]
 
-    return ChatResponse(response=ai_message, messages=result["messages"])
+    return ChatResponse(response=ai_message.content)

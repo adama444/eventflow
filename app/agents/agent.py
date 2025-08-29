@@ -1,14 +1,17 @@
 from pathlib import Path
-from typing import TypedDict
+from typing import Annotated, Any, TypedDict, cast
 
+import psycopg
 import yaml
-from langchain.prompts import ChatPromptTemplate
+from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_ollama import ChatOllama
-from langgraph.graph import END, StateGraph
+from langgraph.checkpoint.postgres import PostgresSaver
+from langgraph.graph import END, StateGraph, add_messages
+from psycopg.rows import dict_row
 
 from app.core.config import settings
 from app.core.logger import get_logger
-from app.schemas.event_data import EventData
+from app.schemas.event import Event
 
 logger = get_logger(__name__)
 
@@ -26,7 +29,7 @@ def load_system_prompt() -> str:
 class ConversationState(TypedDict):
     """A simple conversation state for LangGraph."""
 
-    messages: list
+    messages: Annotated[list, add_messages]
 
 
 SYSTEM_PROMPT = load_system_prompt()
@@ -34,31 +37,34 @@ SYSTEM_PROMPT = load_system_prompt()
 llm = ChatOllama(model=settings.ollama_model, temperature=0)
 
 prompt_template = ChatPromptTemplate.from_messages(
-    [("system", SYSTEM_PROMPT), ("human", "{input}")]
-).partial(event_model=EventData().model_construct().model_dump_json())
+    [("system", SYSTEM_PROMPT), MessagesPlaceholder("messages")]
+).partial(event_model=Event().model_construct().model_dump_json())
 
 
 def chatbot_node(state: ConversationState) -> ConversationState:
     """Main node: handles conversation turn."""
-    user_message = state["messages"][-1]
-    logger.info(f"User said: {user_message}")
-
-    # Generate LLM response
     chain = prompt_template | llm
-    ai_response = chain.invoke({"input": user_message})
-
-    logger.info(f"AI response: {ai_response.content}")
+    ai_response = chain.invoke({"messages": state["messages"]})
 
     # Append AI response to messages
-    state["messages"].append(ai_response.content)
+    state["messages"].append(ai_response)
+
     return state
 
 
 # Build Graph
 graph = StateGraph(ConversationState)
 graph.add_node("chatbot", chatbot_node)
-graph.set_entry_point("chatbot")
+graph.set_entry_point("chatbot")  # Graph start
 graph.add_edge("chatbot", END)
 
+# Initialize PostgresSaver
+conn = psycopg.connect(
+    settings.psycopg_database_url,
+    autocommit=True,
+    row_factory=dict_row,
+)
+memory = PostgresSaver(cast(Any, conn))
+
 # Export Runnable App
-chatbot_app = graph.compile()
+chatbot_app = graph.compile(checkpointer=memory)

@@ -1,23 +1,27 @@
-import psycopg2
-from psycopg2.extras import RealDictCursor
+from typing import Generator
+from sqlalchemy import create_engine
+from sqlalchemy.orm import DeclarativeBase, sessionmaker, Session
+
 from app.core.config import settings
 
+# Engine & Session
+engine = create_engine(settings.database_url, echo=settings.debug)
 
-def get_connection():
-    """Create and return a new database connection."""
-    conn = psycopg2.connect(settings.database_url, cursor_factory=RealDictCursor)
-    return conn
+SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
 
-def test_connection():
-    """Simple test to validate DB connection."""
+class Base(DeclarativeBase):
+    pass
+
+
+def init_db():
+    """Create all tables"""
+    Base.metadata.create_all(bind=engine)
+
+
+def get_db_session() -> Generator[Session, None, None]:
+    db = SessionLocal()
     try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT version();")
-        db_version = cur.fetchone()
-        print("Connected to PostgreSQL:", db_version)
-        cur.close()
-        conn.close()
-    except Exception as e:
-        print("Database connection failed:", e)
+        yield db
+    finally:
+        db.close()
