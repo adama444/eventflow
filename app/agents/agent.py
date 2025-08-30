@@ -10,10 +10,7 @@ from langgraph.graph import END, StateGraph, add_messages
 from psycopg.rows import dict_row
 
 from app.core.config import settings
-from app.core.logger import get_logger
 from app.schemas.event import Event
-
-logger = get_logger(__name__)
 
 
 def load_system_prompt() -> str:
