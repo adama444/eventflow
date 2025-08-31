@@ -1,7 +1,11 @@
 import mimetypes
+import os
+
 import certifi
 import httplib2
-from google.oauth2 import service_account
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow  # type: ignore
 from googleapiclient.discovery import build  # type: ignore
 from googleapiclient.errors import HttpError  # type: ignore
 from googleapiclient.http import MediaFileUpload  # type: ignore
@@ -13,7 +17,8 @@ logger = get_logger(__name__)
 
 httplib2.CA_CERTS = certifi.where()  # type: ignore
 
-SERVICE_ACCOUNT_FILE = settings.google_drive_credentials
+OAUTH_CLIENT_FILE = settings.google_drive_credentials
+TOKEN_FILE = settings.google_oauth_token
 DRIVE_FOLDER_ID = settings.drive_folder_id
 SCOPES = [
     "https://www.googleapis.com/auth/drive.metadata.readonly",
@@ -22,11 +27,40 @@ SCOPES = [
 
 
 def create_drive_service():
-    credentials = service_account.Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE, scopes=SCOPES
-    )
-    service = build("drive", "v3", credentials=credentials)
-    return service
+    """
+    Create a Google Drive service using OAuth2 user credentials.
+    Handles first-time authentication and token refresh automatically.
+    """
+
+    creds = None
+
+    # Load saved token (if exists)
+    if os.path.exists(TOKEN_FILE):
+        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+
+    # If no valid credentials, authenticate via browser
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            try:
+                creds.refresh(Request())
+            except Exception as e:
+                logger.error(f"Failed to refresh token: {e}")
+                creds = None
+        else:
+            try:
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    OAUTH_CLIENT_FILE, SCOPES
+                )
+                creds = flow.run_local_server(port=0)
+            except Exception as e:
+                logger.error(f"OAuth authentication failed: {e}")
+                raise
+
+        # Save the new token
+        with open(TOKEN_FILE, "w") as token:
+            token.write(creds.to_json())
+
+    return build("drive", "v3", credentials=creds)
 
 
 def upload_file_to_drive(
@@ -57,7 +91,6 @@ def upload_file_to_drive(
             .create(
                 body=file_metadata,
                 media_body=media,
-                supportsAllDrives=True,
                 fields="webViewLink",
             )
             .execute()

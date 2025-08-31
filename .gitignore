@@ -206,5 +206,6 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-# Google service account file
-service_account.json
+# Google credentials file
+credentials.json
+token.json

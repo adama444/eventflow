@@ -11,9 +11,10 @@ class Settings(BaseSettings):
     debug: bool = Field(default=True)
 
     # Google Drive
-    google_drive_credentials: str = 'service_account.json'
+    google_drive_credentials: str = 'credentials.json'
     drive_folder_id: str = Field(default='')
     drive_media_folder_id: str = Field(default='')
+    google_oauth_token: str = 'token.json'
 
     # LangSmith / LangChain
     langsmith_tracing: bool = Field(default=False)
