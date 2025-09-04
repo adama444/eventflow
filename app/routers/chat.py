@@ -1,5 +1,4 @@
 import os
-from typing import Any, Iterable, cast
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -9,6 +8,7 @@ from langchain.schema import HumanMessage
 from app.agents.agent import chatbot_app
 from app.core.config import settings
 from app.core.database import get_db_session
+from app.helper.agent import extract_json_from_output, save_json_to_drive
 from app.helper.drive import upload_file_to_drive
 from app.helper.user import get_user
 from app.schemas.chat import ChatRequest, ChatResponse
@@ -27,7 +27,8 @@ async def chat_endpoint(
     """
     Chat endpoint that supports text and media files.
     - Text goes directly to the LLM
-    - Files are uploaded to Google Drive, and their URLs are appended to the message
+    - Files are uploaded to Google Drive
+    - Filename's format is: event_{user_id}_{uuid}
     """
 
     file_urls = []
@@ -66,9 +67,17 @@ async def chat_endpoint(
         request.message += f"\nfiles url: {', '.join(file_urls)}"  # type: ignore[arg-type]
 
     result = chatbot_app.invoke(
-        cast(Any, {"messages": [HumanMessage(request.message)]}),
-        config={"configurable": {"thread_id": str(user.id)}},
+        {
+            "messages": [HumanMessage(request.message)],
+            "is_validated": False,
+        },  # type: ignore[arg-type]
+        config={"configurable": {"thread_id": f"user-{user.id}"}},
     )
     ai_message = result["messages"][-1]
+
+    if result["is_validated"]:
+        json_data = extract_json_from_output(ai_message.content)
+        if json_data:
+            file_url = save_json_to_drive(json_data, f"event_{user.id}_{uuid4()}.json")
 
     return ChatResponse(response=ai_message.content)

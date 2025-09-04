@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Annotated, Any, TypedDict, cast
+from typing import Annotated, TypedDict
 
 import psycopg
 import yaml
@@ -10,7 +10,10 @@ from langgraph.graph import END, StateGraph, add_messages
 from psycopg.rows import dict_row
 
 from app.core.config import settings
-from app.schemas.event import Event
+from app.core.logger import get_logger
+from app.schemas.event import generate_sample_event
+
+logger = get_logger(__name__)
 
 
 def load_system_prompt() -> str:
@@ -27,15 +30,16 @@ class ConversationState(TypedDict):
     """A simple conversation state for LangGraph."""
 
     messages: Annotated[list, add_messages]
+    is_validated: bool
 
 
 SYSTEM_PROMPT = load_system_prompt()
 
-llm = ChatOllama(model=settings.ollama_model, temperature=0)
+llm = ChatOllama(model=settings.ollama_model, temperature=0.5)
 
 prompt_template = ChatPromptTemplate.from_messages(
     [("system", SYSTEM_PROMPT), MessagesPlaceholder("messages")]
-).partial(event_model=Event().model_construct().model_dump_json())
+).partial(event_model=generate_sample_event().model_dump_json())
 
 
 def chatbot_node(state: ConversationState) -> ConversationState:
@@ -43,9 +47,8 @@ def chatbot_node(state: ConversationState) -> ConversationState:
     chain = prompt_template | llm
     ai_response = chain.invoke({"messages": state["messages"]})
 
-    # Append AI response to messages
     state["messages"].append(ai_response)
-
+    state["is_validated"] = True if "<<VALIDATED>>" in ai_response.content else False
     return state
 
 
@@ -61,7 +64,7 @@ conn = psycopg.connect(
     autocommit=True,
     row_factory=dict_row,
 )
-memory = PostgresSaver(cast(Any, conn))
+memory = PostgresSaver(conn)
 
 # Export Runnable App
 chatbot_app = graph.compile(checkpointer=memory)
