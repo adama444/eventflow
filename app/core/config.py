@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     langsmith_project: str | None = None
 
     # Groq API
-    ollama_model: str = 'gemma3:1b'
+    ollama_model: str = 'llama3.2:3b'
 
     # Database
     postgres_user: str = 'postgres'
