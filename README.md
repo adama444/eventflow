@@ -23,6 +23,13 @@ Each user’s conversation state is persisted in the database and can be resumed
 ### ⚠️ Note
 Make sure your PostgreSQL database is running and correctly configured in .env before using checkpointing.
 
+## 📊 LangSmith Integration
+This project supports LangSmith for tracing and debugging conversations.
+Just :
+- Fill your **.env** file using the **.env.sample** file
+- Set `LANGSMITH_TRACING=true` for tracing. 
+- Conversations will automatically be traced in your LangSmith project dashboard.
+
 ## 📂 Project Structure
 ```
 eventflow/
