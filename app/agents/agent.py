@@ -5,7 +5,7 @@ import psycopg
 import yaml
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_ollama import ChatOllama
-from langgraph.checkpoint.postgres import PostgresSaver
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.graph import END, StateGraph, add_messages
 from psycopg.rows import dict_row
 
@@ -42,29 +42,40 @@ prompt_template = ChatPromptTemplate.from_messages(
 ).partial(event_model=generate_sample_event().model_dump_json())
 
 
-def chatbot_node(state: ConversationState) -> ConversationState:
+async def chatbot_node(state: ConversationState) -> ConversationState:
     """Main node: handles conversation turn."""
     chain = prompt_template | llm
-    ai_response = chain.invoke({"messages": state["messages"]})
+    ai_response = await chain.ainvoke({"messages": state["messages"]})
 
     state["messages"].append(ai_response)
     state["is_validated"] = True if "<<VALIDATED>>" in ai_response.content else False
     return state
 
 
-# Build Graph
-graph = StateGraph(ConversationState)
-graph.add_node("chatbot", chatbot_node)
-graph.set_entry_point("chatbot")  # Graph start
-graph.add_edge("chatbot", END)
+async def init_chatbot_app():
+    """Initialize the graph + async PostgresSaver."""
+    graph = StateGraph(ConversationState)
+    graph.add_node("chatbot", chatbot_node)
+    graph.set_entry_point("chatbot")  # Graph start
+    graph.add_edge("chatbot", END)
 
-# Initialize PostgresSaver
-conn = psycopg.connect(
-    settings.psycopg_database_url,
-    autocommit=True,
-    row_factory=dict_row,
-)
-memory = PostgresSaver(conn)
+    # Initialize async Postgres connection
+    conn = await psycopg.AsyncConnection.connect(
+        settings.psycopg_database_url,
+        autocommit=True,
+        row_factory=dict_row,
+    )
+    memory = AsyncPostgresSaver(conn)
 
-# Export Runnable App
-chatbot_app = graph.compile(checkpointer=memory)
+    # Export Runnable App
+    return graph.compile(checkpointer=memory)
+
+
+chatbot_app = None  # global placeholder
+
+
+async def init_chatbot_app_global():
+    global chatbot_app
+    if chatbot_app is None:
+        chatbot_app = await init_chatbot_app()
+    return chatbot_app

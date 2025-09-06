@@ -2,10 +2,11 @@ import os
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi.concurrency import run_in_threadpool
 from langchain.schema import HumanMessage
+from sqlalchemy.orm import Session
 
-from app.agents.agent import chatbot_app
+from app.agents.agent import ConversationState, init_chatbot_app_global
 from app.core.config import settings
 from app.core.database import get_db_session
 from app.helper.agent import extract_json_from_output, save_json_to_drive
@@ -22,7 +23,9 @@ router = APIRouter(prefix="/chat", tags=["Chatbot"])
 
 @router.post("/", response_model=ChatResponse)
 async def chat_endpoint(
-    request: ChatRequest = Depends(), db: Session = Depends(get_db_session)
+    request: ChatRequest = Depends(),
+    db: Session = Depends(get_db_session),
+    chatbot_app=Depends(init_chatbot_app_global),
 ):
     """
     Chat endpoint that supports text and media files.
@@ -30,6 +33,8 @@ async def chat_endpoint(
     - Files are uploaded to Google Drive
     - Filename's format is: event_{user_id}_{uuid}
     """
+    if chatbot_app is None:
+        raise HTTPException(status_code=503, detail="Chatbot app not initialized yet")
 
     file_urls = []
 
@@ -53,10 +58,8 @@ async def chat_endpoint(
             with open(filepath, "wb") as f:
                 f.write(await file.read())
 
-            file_url = upload_file_to_drive(
-                file_path=filepath,
-                file_name=filename,
-                drive_folder_id=settings.drive_media_folder_id,
+            file_url = await run_in_threadpool(
+                upload_file_to_drive, filepath, filename, settings.drive_media_folder_id
             )
 
             file_urls.append(file_url)
@@ -66,11 +69,12 @@ async def chat_endpoint(
     if file_urls:
         request.message += f"\nfiles url: {', '.join(file_urls)}"  # type: ignore[arg-type]
 
-    result = chatbot_app.invoke(
-        {
-            "messages": [HumanMessage(request.message)],
-            "is_validated": False,
-        },  # type: ignore[arg-type]
+    state: ConversationState = {
+        "messages": [HumanMessage(request.message)],
+        "is_validated": False,
+    }
+    result = await chatbot_app.ainvoke(
+        state,
         config={"configurable": {"thread_id": f"user-{user.id}"}},
     )
     ai_message = result["messages"][-1]
@@ -78,6 +82,8 @@ async def chat_endpoint(
     if result["is_validated"]:
         json_data = extract_json_from_output(ai_message.content)
         if json_data:
-            file_url = save_json_to_drive(json_data, f"event_{user.id}_{uuid4()}.json")
+            file_url = await run_in_threadpool(
+                save_json_to_drive, json_data, f"event_{user.id}_{uuid4()}.json"
+            )
 
     return ChatResponse(response=ai_message.content)
