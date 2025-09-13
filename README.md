@@ -1,16 +1,17 @@
 # EventFlow
 
-Interactive chatbot for collecting and managing event data, powered by **LangGraph**, **FastAPI**, **PostgreSQL**, and **Google Drive** storage.
+Interactive chatbot for collecting and managing event data, powered by **LangGraph**, **FastAPI**, **PostgreSQL**, **Google Drive** and **Ollama** as the local LLM provider.
 
 ## 🚀 Overview
-EventFlow is designed to help collect and manage event information (concerts, conferences, workshops, etc.) in a structured way.  
-The chatbot interacts with users, stores checkpoints and long-term memory in PostgreSQL, and saves generated files and media in Google Drive.
+EventFlow is designed to help collect and manage event information (concerts, conferences, workshops, etc.) in a structured way. The chatbot interacts with users, stores checkpoints and long-term memory in PostgreSQL, and saves generated files and media in Google Drive.
+It uses Ollama to run the local LLM for processing conversations.
 
 ## 🛠 Tech Stack
 - [LangGraph](https://github.com/langchain-ai/langgraph) – interactive chatbot workflows
 - [FastAPI](https://fastapi.tiangolo.com/) – API framework
 - PostgreSQL – memory & checkpoints
 - Google Drive API – media & file storage
+- Ollama – local LLM provider
 
 ## 💾 Conversation Memory (Checkpointing)
 The chatbot supports long-term memory using PostgreSQL.
@@ -70,7 +71,8 @@ cp .env.example .env
 ```
 
 4. Install and run an Ollama instance
-The project requires a running [Ollama](https://ollama.com/) instance to process LLM requests. Make sure Ollama is installed and the model you want to use is running before starting the API.
+- The project requires a running [Ollama](https://ollama.com/) instance to process LLM requests.
+- Make sure Ollama is installed and the model you want to use is running before starting the API.
 
 5. Run the API
 ```bash
