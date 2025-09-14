@@ -13,7 +13,6 @@ types-PyYAML
 types-psycopg2
 langgraph-checkpoint-postgres
 types-httplib2
-types-google-api-python-client
 python-multipart
 google-auth-oauthlib
 faker
