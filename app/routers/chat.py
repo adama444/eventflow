@@ -25,6 +25,7 @@ router = APIRouter(prefix="/chat", tags=["Chatbot"])
 async def chat_endpoint(
     user_id: int = Form(..., description="Unique user identifier"),
     message: str = Form(..., description="User message"),
+    is_testing: bool = Form(False, description="Request in testing mod or not"),
     files: list[UploadFile] = File(default=[], description="Files to upload"),
     db: Session = Depends(get_db_session),
     chatbot_app=Depends(init_chatbot_app_global),
@@ -40,10 +41,11 @@ async def chat_endpoint(
 
     file_urls = []
 
-    # Ensure user exists
-    # user = get_user(db, user_id)
-    # if not user:
-    #     raise HTTPException(status_code=404, detail="User not found")
+    if not is_testing:
+        # Ensure user exists
+        user = get_user(db, user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
 
     for file in files:
         ext = file.filename.split(".")[-1].lower()  # type: ignore[union-attr]

@@ -17,11 +17,15 @@ def chat_fn(message, history, session_id):
         # Build files payload dynamically
         files = []
         if "files" in message and message["files"]:
-            files = [("files", (f.split("/")[-1], open(f, "rb"))) for f in message["files"]]
+            files = [
+                ("files", (f.split("/")[-1], open(f, "rb"))) for f in message["files"]
+            ]
 
         # Send request to API
         response = requests.post(
-            settings.api_url, data={"user_id": session_id, "message": message["text"]}, files=files
+            settings.api_url,
+            data={"user_id": session_id, "message": message["text"], "is_testing": True},
+            files=files,
         )
         response.raise_for_status()
 
@@ -39,7 +43,9 @@ with gr.Blocks() as demo:
     gr.Markdown("## 🗂 EventFlow Test Chatbot")
     gr.Markdown("Enter a **Session ID** (number) to start/resume your conversation.")
 
-    session_id_box = gr.Textbox(label="Session ID", placeholder="e.g. 123 or 7", lines=1)
+    session_id_box = gr.Textbox(
+        label="Session ID", placeholder="e.g. 123 or 7", lines=1
+    )
 
     chat_ui = gr.ChatInterface(
         fn=chat_fn,
