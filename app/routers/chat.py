@@ -41,9 +41,9 @@ async def chat_endpoint(
     file_urls = []
 
     # Ensure user exists
-    user = get_user(db, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    # user = get_user(db, user_id)
+    # if not user:
+    #     raise HTTPException(status_code=404, detail="User not found")
 
     for file in files:
         ext = file.filename.split(".")[-1].lower()  # type: ignore[union-attr]
@@ -77,7 +77,7 @@ async def chat_endpoint(
     }
     result = await chatbot_app.ainvoke(
         state,
-        config={"configurable": {"thread_id": f"user-{user.id}"}},
+        config={"configurable": {"thread_id": f"user-{user_id}"}},
     )
     ai_message = result["messages"][-1]
 
@@ -85,7 +85,7 @@ async def chat_endpoint(
         json_data = extract_json_from_output(ai_message.content)
         if json_data:
             file_url = await run_in_threadpool(
-                save_json_to_drive, json_data, f"event_{user.id}_{uuid4()}.json"
+                save_json_to_drive, json_data, f"event_{user_id}_{uuid4()}.json"
             )
 
     return ChatResponse(response=ai_message.content)

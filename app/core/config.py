@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     app_name: str = Field(default="EventFlow")
     app_version: str = Field(default="0.1.0")
     debug: bool = Field(default=True)
+    api_url: str = 'http://127.0.0.1:8000/api/v1/chat/'
+    gradio_app_port: int = 7860
 
     # Google Drive
     google_drive_credentials: str = "credentials.json"
